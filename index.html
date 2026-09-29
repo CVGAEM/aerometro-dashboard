@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AeroMetro · Encuesta de Percepción Ciudadana</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/wordcloud@1.2.2/src/wordcloud2.min.js"></script>
+<style>
+  :root{
+    --dark:#0B2545; --teal:#00A6A6; --cyan:#48CAE4; --blue:#0077B6;
+    --amber:#F4A300; --coral:#EF476F; --green:#06D6A0; --bg:#F7FBFC;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:'Segoe UI',Roboto,sans-serif;
+    background:linear-gradient(180deg,#F7FBFC 0%,#EAF4F7 100%);
+    color:var(--dark); min-height:100vh; padding-bottom:40px;
+  }
+  .hero{
+    background:linear-gradient(120deg,var(--dark) 0%,#123A63 45%,var(--teal) 100%);
+    color:#fff; padding:26px 34px; border-radius:0 0 22px 22px;
+    box-shadow:0 10px 30px rgba(11,37,69,.25); margin-bottom:22px;
+  }
+  .hero h1{font-size:28px; letter-spacing:-.5px; margin-bottom:6px;}
+  .hero p{opacity:.85; font-size:14px;}
+  .wrap{max-width:1400px; margin:0 auto; padding:0 22px;}
+
+  /* Filtros */
+  .filters{
+    display:flex; flex-wrap:wrap; gap:14px; margin-bottom:18px;
+    background:#fff; padding:16px 20px; border-radius:14px;
+    box-shadow:0 4px 14px rgba(11,37,69,.07);
+  }
+  .filter{display:flex; flex-direction:column; gap:6px; min-width:200px; flex:1;}
+  .filter label{font-size:12px; font-weight:600; color:#5A6B7B; text-transform:uppercase; letter-spacing:.4px;}
+  .filter select{
+    padding:8px 10px; border-radius:8px; border:1px solid #D5DEE7;
+    font-size:14px; background:#fff; color:var(--dark); cursor:pointer;
+    font-family:inherit;
+  }
+  .filter select:focus{outline:2px solid var(--teal); outline-offset:1px;}
+
+  /* KPIs */
+  .kpis{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:14px; margin-bottom:22px;
+  }
+  .kpi{
+    background:#fff; padding:16px 18px; border-radius:14px;
+    box-shadow:0 4px 14px rgba(11,37,69,.08);
+    border-left:5px solid var(--teal);
+  }
+  .kpi .lbl{font-size:12px; color:#5A6B7B; text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px;}
+  .kpi .val{font-size:26px; font-weight:700; color:var(--dark);}
+  .kpi .sub{font-size:12px; color:#8A99A8; margin-top:4px;}
+
+  /* Tabs */
+  .tabs{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px;}
+  .tab{
+    background:#fff; padding:10px 18px; border-radius:10px 10px 0 0;
+    cursor:pointer; font-size:14px; font-weight:500; color:var(--dark);
+    box-shadow:0 2px 6px rgba(11,37,69,.06); border:none;
+    transition:all .2s ease; font-family:inherit;
+  }
+  .tab:hover{background:#F0F7FA;}
+  .tab.active{background:var(--dark); color:#fff;}
+
+  /* Contenido tabs */
+  .panel{display:none;}
+  .panel.active{display:block; animation:fade .3s ease;}
+  @keyframes fade{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);}}
+
+  /* Grid de tarjetas */
+  .grid-2{display:grid; grid-template-columns:repeat(auto-fit,minmax(420px,1fr)); gap:18px;}
+  .grid-3{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:18px;}
+
+  .card{
+    background:#fff; border-radius:14px; padding:20px;
+    box-shadow:0 4px 14px rgba(11,37,69,.07);
+  }
+  .card h3{
+    font-size:15px; color:var(--dark); margin-bottom:14px;
+    padding-bottom:8px; border-bottom:2px solid #EAF4F7;
+    font-weight:600;
+  }
+  .chart-box{position:relative; height:360px;}
+  .chart-box.tall{height:480px;}
+
+  /* Nube de palabras */
+  #wordcloud-canvas{
+    width:100%; height:460px; background:var(--dark);
+    border-radius:12px;
+  }
+  .wc-controls{
+    display:flex; flex-wrap:wrap; gap:12px; align-items:center;
+    margin-bottom:14px;
+  }
+  .wc-controls label{font-size:13px; color:#5A6B7B; font-weight:600;}
+  .wc-controls select, .wc-controls input[type=range]{
+    padding:6px 10px; border-radius:8px; border:1px solid #D5DEE7;
+    font-family:inherit; font-size:13px;
+  }
+
+  /* Tabla */
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th,td{padding:8px 10px; text-align:left; border-bottom:1px solid #EAF4F7;}
+  th{background:#F4FAFC; color:var(--dark); font-weight:600;}
+  tr:hover td{background:#F9FCFE;}
+  .scroll{max-height:520px; overflow-y:auto; border-radius:10px; border:1px solid #EAF4F7;}
+
+  .nota{
+    background:#FFF7E6; border-left:4px solid var(--amber);
+    padding:10px 14px; border-radius:8px; font-size:13px; color:#6B4E00;
+    margin-top:14px;
+  }
+  .footer{
+    text-align:center; color:#8A99A8; font-size:12px;
+    margin-top:32px; padding-top:20px; border-top:1px solid #EAF4F7;
+  }
+  @media(max-width:640px){
+    .hero h1{font-size:20px;}
+    .grid-2,.grid-3{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>🚇 AeroMetro · Encuesta de Percepción Ciudadana</h1>
+  <p>Panel interactivo de resultados · Proyecto AeroMetro · <span id="n-total"></span> respuestas registradas</p>
+</div>
+
+<div class="wrap">
+
+  <!-- FILTROS -->
+  <div class="filters">
+    <div class="filter">
+      <label>Género</label>
+      <select id="f-genero"><option value="">Todos</option></select>
+    </div>
+    <div class="filter">
+      <label>Zona de residencia</label>
+      <select id="f-zona"><option value="">Todas</option></select>
+    </div>
+    <div class="filter">
+      <label>Rango de edad</label>
+      <select id="f-edad"><option value="">Todos</option></select>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpis">
+    <div class="kpi"><div class="lbl">Encuestados</div><div class="val" id="k-n">0</div><div class="sub" id="k-n-sub">—</div></div>
+    <div class="kpi"><div class="lbl">Edad promedio</div><div class="val" id="k-edad">—</div><div class="sub">años</div></div>
+    <div class="kpi"><div class="lbl">Mujeres</div><div class="val" id="k-f">0</div><div class="sub">respuestas</div></div>
+    <div class="kpi"><div class="lbl">Hombres</div><div class="val" id="k-m">0</div><div class="sub">respuestas</div></div>
+    <div class="kpi"><div class="lbl">Conocimiento del proyecto</div><div class="val" id="k-conoc">—</div><div class="sub" id="k-conoc-sub">—</div></div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" data-tab="resumen">📊 Resumen</button>
+    <button class="tab" data-tab="conocimiento">🧠 Conocimiento e información</button>
+    <button class="tab" data-tab="impactos">🏗️ Impactos y riesgos</button>
+    <button class="tab" data-tab="acciones">✅ Acciones prioritarias</button>
+    <button class="tab" data-tab="nube">💬 Nube de palabras</button>
+    <button class="tab" data-tab="datos">🗂️ Datos</button>
+  </div>
+
+  <!-- TAB: RESUMEN -->
+  <div class="panel active" id="p-resumen">
+    <div class="grid-2">
+      <div class="card"><h3>Nivel de conocimiento del proyecto (P1)</h3><div class="chart-box"><canvas id="c-p1-dona"></canvas></div></div>
+      <div class="card"><h3>Principales impactos positivos percibidos (P2)</h3><div class="chart-box tall"><canvas id="c-p2-barra"></canvas></div></div>
+    </div>
+    <div class="grid-2" style="margin-top:18px;">
+      <div class="card"><h3>Distribución por zona de residencia</h3><div class="chart-box"><canvas id="c-zona"></canvas></div></div>
+      <div class="card"><h3>Distribución por rango de edad</h3><div class="chart-box"><canvas id="c-edad"></canvas></div></div>
+    </div>
+  </div>
+
+  <!-- TAB: CONOCIMIENTO -->
+  <div class="panel" id="p-conocimiento">
+    <div class="grid-2">
+      <div class="card"><h3>P1 · Nivel de conocimiento del proyecto</h3><div class="chart-box"><canvas id="c-p1-dona2"></canvas></div></div>
+      <div class="card"><h3>P4 · Percepción de la información recibida</h3><div class="chart-box"><canvas id="c-p4-dona"></canvas></div></div>
+    </div>
+    <div class="nota">💡 Las categorías 1–2 de P1 indican mayor conocimiento; las categorías 1–2 de P4 indican mejor percepción de la información.</div>
+  </div>
+
+  <!-- TAB: IMPACTOS -->
+  <div class="panel" id="p-impactos">
+    <div class="grid-2">
+      <div class="card"><h3>P2 · Impactos positivos esperados</h3><div class="chart-box tall"><canvas id="c-p2-barra2"></canvas></div></div>
+      <div class="card"><h3>P3 · Efectos o riesgos de la construcción</h3><div class="chart-box tall"><canvas id="c-p3-barra"></canvas></div></div>
+    </div>
+  </div>
+
+  <!-- TAB: ACCIONES -->
+  <div class="panel" id="p-acciones">
+    <div class="card"><h3>P5 · Acciones que deberían priorizarse</h3><div class="chart-box tall"><canvas id="c-p5-barra"></canvas></div></div>
+  </div>
+
+  <!-- TAB: NUBE -->
+  <div class="panel" id="p-nube">
+    <div class="card">
+      <h3>💬 Voces ciudadanas — Preguntas abiertas P6 y P7</h3>
+      <div class="wc-controls">
+        <label>Fuente:</label>
+        <select id="wc-fuente">
+          <option value="ambas">Ambas (P6 + P7)</option>
+          <option value="p6">Solo P6 · Cambio más importante</option>
+          <option value="p7">Solo P7 · Recomendación</option>
+        </select>
+        <label>Máx. palabras:</label>
+        <input type="range" id="wc-max" min="30" max="120" value="70" step="10">
+        <span id="wc-max-val" style="font-size:13px;font-weight:600;">70</span>
+      </div>
+      <canvas id="wordcloud-canvas"></canvas>
+      <div class="nota">Las palabras vacías (artículos, preposiciones, etc.) y las no-respuestas fueron eliminadas automáticamente.</div>
+    </div>
+    <div class="card" style="margin-top:18px;">
+      <h3>🔝 Palabras más frecuentes</h3>
+      <div class="chart-box tall"><canvas id="c-palabras"></canvas></div>
+    </div>
+    <div class="card" style="margin-top:18px;">
+      <h3>📄 Comentarios originales</h3>
+      <div class="scroll"><table id="t-comentarios"><thead><tr><th>ID</th><th>P6 · Cambio más importante</th><th>P7 · Recomendación</th></tr></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- TAB: DATOS -->
+  <div class="panel" id="p-datos">
+    <div class="card">
+      <h3>🗂️ Base de datos filtrada</h3>
+      <div class="scroll"><table id="t-datos"><thead></thead><tbody></tbody></table></div>
+      <p style="margin-top:12px;font-size:13px;color:#5A6B7B;">
+        <a id="btn-csv" href="#" download="aerometro_filtrado.csv"
+           style="color:var(--teal); font-weight:600; text-decoration:none;">⬇️ Descargar CSV filtrado</a>
+      </p>
+    </div>
+  </div>
+
+  <div class="footer">AeroMetro · Panel de percepción ciudadana · n = <span id="n-foot"></span></div>
+</div>
+
+<script>
+/* =====================================================================
+   1. DATOS
+   ===================================================================== */
+const RAW = [
+ [1,43,"F","10",3,"T",[1,3,4],2,[2,3,4,8]],
+ [2,24,"F","2",2,[1,9],[3,8,9],2,[2,4,6]],
+ [3,21,"F","3",3,[1,2,3,7,9],[3,4,5],1,[1,3,4,5,7]],
+ [4,41,"F","",[2,3],[1,3,6],[],1,[]],
+ [5,56,"F","11",3,[1,3,7],[1],2,[3,4,5]],
+ [6,43,"M","Mixco",3,[1,3,7],[4,8,10],2,[2,5,6]],
+ [7,35,"M","11 · Mixco",2,[1,2,4],[1,2,3],2,[1,3,5]],
+ [8,25,"F","16",3,[1,5],[1,2,5,6],3,[2,4,9]],
+ [9,36,"M","CAES",3,[2,4,6],[1,6,9],1,[3,4,10]],
+ [10,40,"M","14",[2,3],[1,2,3,7,8],[],1,[3,4]],
+ [11,41,"M","CAES",2,[1,2,3],[1,8,9],2,[2,3,4]],
+ [12,68,"M","10",4,[1,2,3],[1,2,7],1,[2,3,4]],
+ [13,40,"M","CAES",2,[1,3,5],[1],2,[2,3]],
+ [14,22,"F","Villa Nueva",3,[2,7,9],[1,2,5],1,[3,4,5]],
+ [15,38,"M","11",3,[2,3],[1,2],3,[3,4,8]],
+ [16,48,"M","Sacatepéquez",3,[1,2,3],[1,2,3],3,[1,2,4]],
+ [17,25,"M","13",4,[4],[1],1,[2]],
+ [18,19,"M","2",5,[3],[11],1,[3]],
+ [19,24,"F","3",3,[1,3,4],[1,5,6],3,[3]],
+ [20,63,"F","7",5,[1,3,4],[1],3,[3,7]],
+ [21,38,"F","Boca del Monte · Villa Canales",4,[3,4],[1,11],3,[3,4,5]],
+ [22,"","","",2,"T",[1,2,4],1,[2,4,5]],
+ [23,36,"F","18",3,[1,4,5,7],[11],5,[2,3,6]],
+ [24,48,"F","13",3,[4],[1,2,3],5,[6,10]],
+ [25,50,"F","CAES",3,[1,2,4],[1,2,3],5,[2,4,6]],
+ [26,49,"F","21",2,[1,4,7],[1,2,4],1,[1,2,6]],
+ [27,35,"F","12",2,[2,3,7,8,9],[1,2,4],2,[3,8]],
+ [28,20,"F","10",3,[1,3,4],[1,2],1,[3,6]],
+ [29,54,"M","Mixco",2,[1,4,9],[1,3,10],3,[2,3,6]],
+ [30,27,"M","7",2,[1,3,4],[1,2,6],1,[1,2,10]],
+ [31,32,"F","7",3,[1,3,4],[1,3,4],3,[1,3,4]],
+ [32,35,"M","11",3,[1,8],[1,2,3,4,5,6],5,[]],
+ [33,44,"F","1",1,[1,4,9],[1],2,[3,4,10]],
+ [34,56,"F","7",2,[1,4],[1,2,3],3,[2,3,4]],
+ [35,21,"M","San José Pinula",3,[1,2,3,7],[11],2,[2,3,4,7]],
+ [36,37,"M","10",1,[1,3,6],[1,3,4],3,[2,3,7]],
+ [37,59,"M","2",1,[1,2,3,7,9],[8],2,[3,5,7]],
+ [38,26,"F","7 · San Miguel Petapa",4,[3],[2,4,6],4,[2,3,7]],
+ [39,26,"F","6 · Mixco",3,[1,4],[3,5,8],2,[5]],
+ [40,12,"F","Santa Catarina Pinula",3,[2,5,9],[1,2,6],1,[1,4,6]],
+ [41,33,"M","4",2,[1,4],[5,8],2,[3,7,9]],
+ [42,29,"F","6",2,[1,3,7],[2,5,7],1,[1,2,5]],
+ [43,59,"F","CAES",2,[1,3,5],[1,2,3],5,[3]],
+ [44,28,"F","21",2,[1,3,9],[1,3,5],1,[9,10]],
+ [45,45,"M","18",3,[1,3],[1,2,6],3,[2,4,6]],
+ [46,60,"M","14",1,[1,3,4],[1],3,[3]],
+ [47,34,"M","17",2,[1,3,8],[1,3],1,[1,3,7]]
+];
+
+// "T" = "Todas las opciones" → expandir a 1..12 para P2
+function expandP2(v){ return v==="T" ? [1,2,3,4,5,6,7,8,9,10,11,12] : (Array.isArray(v)?v:[]); }
+
+const DATA = RAW.map(r=>({
+  id:r[0], edad:typeof r[1]==="number"?r[1]:null,
+  genero:r[2]||"No espec.", zona:r[3]||"No espec.",
+  p1: Array.isArray(r[4]) ? (r[4][0]||null) : r[4],
+  p2: expandP2(r[5]),
+  p3: Array.isArray(r[6])?r[6]:[],
+  p4: r[7]||null,
+  p5: Array.isArray(r[8])?r[8]:[],
+  rango: rangoEdad(typeof r[1]==="number"?r[1]:null)
+}));
+
+function rangoEdad(e){
+  if(e==null) return "No espec.";
+  if(e<18) return "<18"; if(e<=25) return "18-25";
+  if(e<=35) return "26-35"; if(e<=45) return "36-45";
+  if(e<=60) return "46-60"; return "60+";
+}
+
+/* Comentarios abiertos */
+const COMENTARIOS = [
+ ["Actualización y mejora en el sistema de transporte actual debido a que Gt no cuenta con un sistema de transporte digno.","Sigan adelante y no hacer caso a las críticas, al final los que critican, son los primeros en utilizar Aerometro."],
+ ["Ayudar al medio ambiente y reducir el tráfico","No contestó"],
+ ["Reducción del impacto medioambiental negativo","Incorporar personal de seguridad en las cabinas"],
+ ["Reducción de tiempos de traslados, modernización del transporte público e innovación","Que sigan adelante en los proyectos, haciendo más para mejorar el traslado a varias partes del país."],
+ ["Disminución de tiempos de traslado, modernización e innovación del servicio público","Mantener informado a las personas sobre los avances, y el beneficio e innovación para Guatemala"],
+ ["Generación de empleo","Costos adecuados al usuario"],
+ ["Reducción de tiempo en movilización","Información clara y oportuna para organizar de mejor manera"],
+ ["Ahorro de tiempo para mejorar un poco la calidad de vida","Transparencia, información clara y escuchar al ciudadano"],
+ ["Traslado en medio tiempo","Mantener la información clara y precisa"],
+ ["Conexión de zonas","-"],
+ ["Mejorar la calidad de vida del usuario","Buena comunicación"],
+ ["Mejorar el transporte","Hacer más publicidad desde CV"],
+ ["Movilización de las personas","Dejar bien claro con la gente todo, Guatemala es un país que se queja por todo y mientras más claro se pueda ser con la información se va a tener contenta a la gente"],
+ ["Avances en el tráfico, mejor sostenibilidad derivada","Modernización en sistemas y agilidad"],
+ ["Será el inicio de una de las varias opciones de transporte público en la ciudad que se debe tener para los usuarios","Comunicación constante por todos los medios"],
+ ["Calidad de vida para los usuarios","Integración con otros sistemas"],
+ ["Menos tráfico en la ciudad","Que las personas lo usen y lo cuiden porque la movilidad será más rápida"],
+ ["El tránsito","Su funcionamiento, su buen funcionamiento"],
+ ["La afluencia pública y rápida para todas aquellas personas que utilizan a diario el transporte público","Mantenimiento constante"],
+ ["Transporte seguro y rápido","Que sea seguro y al alcance de todos"],
+ ["Mejorar la calidad de vida","Transmitir información clara y necesaria para toda la población"],
+ ["Mejor movilidad","Mejorar la información a nivel general"],
+ ["Facilitar la movilización a miles de usuarios al día. En tiempo, dinero, calidad de vida, etc. Menor posibilidad de asaltos dentro de buses o en estaciones.","Más información de los beneficios, mantenimiento del equipo será crucial, personal bien preparado, tanto técnica como ética y socialmente para actuar y tratar con respeto y apoyo al usuario."],
+ ["Mejorar la movilidad, mejorar el transporte","-"],
+ ["Cambio en los criterios del uso del transporte público",""],
+ ["Control en el tráfico","La correcta información pública"],
+ ["La rapidez y facilidad de movilización de los peatones","Mejorar la información y ampliar las rutas alternas"],
+ ["-","-"],
+ ["Menos tráfico vehicular, atracción turística internacional, reducción de tiempos en la movilización","Gestionar todo el tiempo la información hacia los ciudadanos"],
+ ["-","Que jardinizen y mantengan verde todo el trayecto para que el público no sienta la molestia de la deforestación ya realizada."],
+ ["Disminución de tráfico, ahorro de tiempo","Colocar ubicaciones o mapas de los lugares cercanos que hay cerca de cada parada, estación o torre."],
+ ["Mejora el tiempo de destino y seguridad","Dar una buena comunicación o información al usuario para que no piensen que el proyecto se quedará a media construcción."],
+ ["Tener un transporte digno","Gestión de seguridad en paradas y cabinas"],
+ ["Tráfico","Ser claros y transparentes"],
+ ["Podría mejorar la alta movilidad de los vehículos","Tener mayor seguridad"],
+ ["Alternativa de transporte","Seguridad ciudadana al operar"],
+ ["Reducir tiempo de movilidad en cambios de línea","No tengo información suficiente como para hacer digna recomendación"],
+ ["Diversificar el traslado en Guatemala y abrir la posibilidad a nuevos medios a futuro","Se debe seguir con la gestión de ayuda y conscientización a la gente, aún ya funcionando el proyecto"]
+];
+
+/* =====================================================================
+   2. CATÁLOGOS
+   ===================================================================== */
+const P1_OPTS = {1:"Conozco ampliamente",2:"Conozco características",3:"Info. general",4:"Poca información",5:"Sin información"};
+const P2_OPTS = {1:"Menor tiempo de traslado",2:"Mejor conectividad",3:"Modernización transporte",4:"Menos congestión",5:"Actividad económica",6:"Imagen / competitividad",7:"Acceso servicios y empleo",8:"Turismo y entorno urbano",9:"Beneficios ambientales",10:"Inclusión / accesibilidad",11:"Otro",12:"Sin información"};
+const P3_OPTS = {1:"Cambios en movilidad",2:"Acceso temporal difícil",3:"Afectación económica",4:"Riesgos peatonales",5:"Ruido, polvo",6:"Cambios en cronogramas",7:"Falta de coordinación",8:"Info insuficiente",9:"Expectativas altas",10:"Conflictividad",11:"Sin riesgos relevantes"};
+const P4_OPTS = {1:"Clara y anticipada",2:"Clara, no oportuna",3:"Oportuna, poco clara",4:"Limitada / inconsistente",5:"No recibo información"};
+const P5_OPTS = {1:"Planificación / coordinación",2:"Comunicar anticipadamente",3:"Info clara y consistente",4:"Accesos peatonales seguros",5:"Seguridad en obra",6:"Apoyo a comercios",7:"Atención de quejas",8:"Accesibilidad universal",9:"Manejo ambiental",10:"Monitoreo de impactos"};
+
+/* =====================================================================
+   3. PALETA Y AYUDAS
+   ===================================================================== */
+const COLORS = ["#00A6A6","#0077B6","#0B2545","#48CAE4","#F4A300","#EF476F","#06D6A0","#90E0EF","#023E8A","#FFD166","#118AB2","#6A4C93"];
+const CFG_FONT = {family:"'Segoe UI',Roboto,sans-serif", size:12};
+Chart.defaults.font.family = CFG_FONT.family;
+Chart.defaults.color = "#0B2545";
+
+function wrapLabel(txt, max){ // envuelve etiquetas largas
+  if(txt.length<=max) return txt;
+  const parts=[]; let cur="";
+  txt.split(" ").forEach(w=>{
+    if((cur+" "+w).trim().length>max){ parts.push(cur.trim()); cur=w; }
+    else cur=(cur+" "+w).trim();
+  });
+  if(cur) parts.push(cur.trim());
+  return parts;
+}
+
+/* =====================================================================
+   4. LÓGICA DE FILTROS Y CÁLCULOS
+   ===================================================================== */
+const state = {genero:"", zona:"", rango:""};
+
+function aplicarFiltros(){
+  return DATA.filter(d =>
+    (!state.genero || d.genero===state.genero) &&
+    (!state.zona   || d.zona===state.zona) &&
+    (!state.rango  || d.rango===state.rango)
+  );
+}
+
+function contar(arr, key, max){
+  const c={};
+  arr.forEach(d=>{
+    (Array.isArray(d[key])?d[key]:[d[key]]).forEach(v=>{
+      if(v==null) return;
+      c[v]=(c[v]||0)+1;
+    });
+  });
+  return c;
+}
+
+function contarSimple(arr, key){
+  const c={};
+  arr.forEach(d=>{ if(d[key]!=null) c[d[key]]=(c[d[key]]||0)+1; });
+  return c;
+}
+
+/* Guardar instancias de gráficos para destruir antes de re-renderizar */
+const charts = {};
+function renderChart(id, cfg){
+  if(charts[id]) charts[id].destroy();
+  const ctx = document.getElementById(id);
+  if(!ctx) return;
+  charts[id] = new Chart(ctx, cfg);
+}
+
+/* =====================================================================
+   5. GRÁFICOS
+   ===================================================================== */
+function graficoDona(id, conteo, catalogo, titulo){
+  const keys = Object.keys(conteo).map(Number).sort((a,b)=>a-b);
+  renderChart(id,{
+    type:"doughnut",
+    data:{
+      labels: keys.map(k=>catalogo[k]||k),
+      datasets:[{
+        data: keys.map(k=>conteo[k]),
+        backgroundColor: keys.map((_,i)=>COLORS[i%COLORS.length]),
+        borderColor:"#fff", borderWidth:2
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{position:"bottom", labels:{boxWidth:12, padding:10, font:{size:11}}},
+        tooltip:{callbacks:{
+          label:c=>{
+            const total=c.dataset.data.reduce((a,b)=>a+b,0);
+            const pct=((c.parsed/total)*100).toFixed(1);
+            return ` ${c.label}: ${c.parsed} (${pct}%)`;
+          }
+        }}
+      },
+      cutout:"55%"
+    }
+  });
+}
+
+function graficoBarrasH(id, conteo, catalogo, base, colorBase){
+  const items = Object.entries(conteo)
+    .map(([k,v])=>({k:Number(k), label:catalogo[k]||k, v}))
+    .sort((a,b)=>a.v-b.v);
+  const labels = items.map(x=>wrapLabel(x.label,38));
+  const values = items.map(x=>x.v);
+
+  renderChart(id,{
+    type:"bar",
+    data:{
+      labels,
+      datasets:[{
+        data: values,
+        backgroundColor: values.map((_,i)=>{
+          const t = values.length>1 ? i/(values.length-1) : 0.5;
+          // gradiente cian → color base
+          return mixColor("#48CAE4", colorBase, t);
+        }),
+        borderRadius:6,
+        borderSkipped:false
+      }]
+    },
+    options:{
+      indexAxis:"y", responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{
+          label:c=>{
+            const pct = base ? ((c.parsed.x/base)*100).toFixed(1) : "—";
+            return ` ${c.parsed.x} menciones (${pct}% de ${base})`;
+          }
+        }}
+      },
+      scales:{
+        x:{beginAtZero:true, grid:{color:"rgba(11,37,69,.06)"}, ticks:{font:{size:11}}},
+        y:{grid:{display:false}, ticks:{font:{size:11}}}
+      }
+    }
+  });
+}
+
+function graficoBarrasSimple(id, mapa, color){
+  const labels = Object.keys(mapa);
+  const values = labels.map(k=>mapa[k]);
+  renderChart(id,{
+    type:"bar",
+    data:{
+      labels,
+      datasets:[{data:values, backgroundColor:color, borderRadius:6, borderSkipped:false}]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{grid:{display:false}, ticks:{font:{size:11}}},
+        y:{beginAtZero:true, grid:{color:"rgba(11,37,69,.06)"}, ticks:{font:{size:11}}}
+      }
+    }
+  });
+}
+
+/* Mezcla dos colores hex */
+function mixColor(a,b,t){
+  const pa=parseInt(a.slice(1),16), pb=parseInt(b.slice(1),16);
+  const ar=(pa>>16)&255, ag=(pa>>8)&255, ab=pa&255;
+  const br=(pb>>16)&255, bg=(pb>>8)&255, bb=pb&255;
+  const r=Math.round(ar+(br-ar)*t), g=Math.round(ag+(bg-ag)*t), bl=Math.round(ab+(bb-ab)*t);
+  return `rgb(${r},${g},${bl})`;
+}
+
+/* =====================================================================
+   6. KPIs Y RENDERIZADO GENERAL
+   ===================================================================== */
+function renderKPIs(filtrados){
+  document.getElementById("k-n").textContent = filtrados.length;
+  document.getElementById("k-n-sub").textContent =
+    filtrados.length===DATA.length ? "total de respuestas" : `de ${DATA.length} totales`;
+  const edades = filtrados.map(d=>d.edad).filter(e=>e!=null);
+  document.getElementById("k-edad").textContent =
+    edades.length ? (edades.reduce((a,b)=>a+b,0)/edades.length).toFixed(1) : "—";
+  document.getElementById("k-f").textContent = filtrados.filter(d=>d.genero==="F").length;
+  document.getElementById("k-m").textContent = filtrados.filter(d=>d.genero==="M").length;
+
+  const p1s = filtrados.map(d=>d.p1).filter(x=>x!=null);
+  if(p1s.length){
+    const prom = p1s.reduce((a,b)=>a+b,0)/p1s.length;
+    const nivel = prom<=2 ? "Alto" : prom<=3.5 ? "Medio" : "Bajo";
+    document.getElementById("k-conoc").textContent = nivel;
+    document.getElementById("k-conoc-sub").textContent = `promedio ${prom.toFixed(2)}/5`;
+  } else {
+    document.getElementById("k-conoc").textContent = "—";
+    document.getElementById("k-conoc-sub").textContent = "";
+  }
+  document.getElementById("n-foot").textContent = filtrados.length;
+}
+
+function renderTodo(){
+  const f = aplicarFiltros();
+  renderKPIs(f);
+
+  // --- Resumen ---
+  graficoDona("c-p1-dona", contarSimple(f,"p1"), P1_OPTS);
+  graficoBarrasH("c-p2-barra", contar(f,"p2"), P2_OPTS, f.length, "#06D6A0");
+  graficoDona("c-p1-dona2", contarSimple(f,"p1"), P1_OPTS);
+  graficoDona("c-p4-dona", contarSimple(f,"p4"), P4_OPTS);
+  graficoBarrasH("c-p2-barra2", contar(f,"p2"), P2_OPTS, f.length, "#06D6A0");
+  graficoBarrasH("c-p3-barra", contar(f,"p3"), P3_OPTS, f.length, "#EF476F");
+  graficoBarrasH("c-p5-barra", contar(f,"p5"), P5_OPTS, f.length, "#F4A300");
+
+  // Distribuciones
+  const zonas = {};
+  f.forEach(d=>{ zonas[d.zona]=(zonas[d.zona]||0)+1; });
+  const zonasTop = Object.fromEntries(Object.entries(zonas).sort((a,b)=>b[1]-a[1]).slice(0,12));
+  graficoBarrasSimple("c-zona", zonasTop, "#0077B6");
+
+  const ordenEdad = ["<18","18-25","26-35","36-45","46-60","60+","No espec."];
+  const edadesMap = {};
+  ordenEdad.forEach(r=>{ edadesMap[r]= f.filter(d=>d.rango===r).length; });
+  graficoBarrasSimple("c-edad", edadesMap, "#00A6A6");
+
+  // --- Nube de palabras ---
+  renderNube();
+
+  // --- Tabla de datos ---
+  renderTablaDatos(f);
+}
+
+/* =====================================================================
+   7. NUBE DE PALABRAS
+   ===================================================================== */
+const STOPWORDS = new Set(`a al algo algunas algun alguno algunos alla ambas ambos ante antes aquel aquella aquellas aquellos aqui asi aun aunque bien cada casi como con conmigo contra cual cuales cuando cuanto cuanta cuantas cuantos de del demas demasiada demasiado desde donde dos el ella ellas ello ellos en entonces entre era eran eres es esa esas ese eso esos esta estan estas este esto estos estoy fue fueron ha hace hacen hacia han hasta hay la las le les lo los me mi mis mucho mucha muchos muchas muy mas nada ni no nos nosotros nuestra nuestro o os otra otras otro otros para pero poco por porque que quien quienes se sea segun ser si sin sobre son soy su sus tambien tan tanto te tener tiene tienen todo toda todos todas tu tus un una uno unos unas usted ustedes va vamos van y ya yo sera seria serian estaria pueden puede debe deberia deberian hacer hagan haria solo ademas tema cosa cosas parte partes manera forma nivel general gente persona personas guatemala ciudad pais proyecto gran tal cual cuales dia dias vez veces ano anos`.split(/\s+/));
+
+function limpiar(txt){
+  return (txt||"")
+    .toString().toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/[^a-zñ\s]/g," ")
+    .split(/\s+/)
+    .filter(w=>w.length>=4 && !STOPWORDS.has(w));
+}
+
+function esNoRespuesta(t){
+  const s=(t||"").toLowerCase().trim();
+  if(!s || s==="-" || s==="--") return true;
+  if(s.startsWith("no contesto") || s.startsWith("no respondio")) return true;
+  if(s.startsWith("no tengo informacion suficiente")) return true;
+  return false;
+}
+
+function palabrasFrecuentes(fuente){
+  const textos = [];
+  COMENTARIOS.forEach(([p6,p7])=>{
+    if(fuente==="ambas" || fuente==="p6"){ if(!esNoRespuesta(p6)) textos.push(p6); }
+    if(fuente==="ambas" || fuente==="p7"){ if(!esNoRespuesta(p7)) textos.push(p7); }
+  });
+  const c={};
+  textos.forEach(t=>limpiar(t).forEach(w=>{ c[w]=(c[w]||0)+1; }));
+  return c;
+}
+
+function renderNube(){
+  const fuente = document.getElementById("wc-fuente").value;
+  const maxW   = parseInt(document.getElementById("wc-max").value,10);
+  document.getElementById("wc-max-val").textContent = maxW;
+
+  const freq = palabrasFrecuentes(fuente);
+  const lista = Object.entries(freq)
+    .sort((a,b)=>b[1]-a[1])
+    .slice(0, maxW)
+    .map(([w,c])=>[w,c]);
+
+  const canvas = document.getElementById("wordcloud-canvas");
+  if(window.WordCloud && lista.length){
+    try{
+      WordCloud(canvas, {
+        list: lista,
+        gridSize: 10,
+        weightFactor: 22,
+        fontFamily: "'Segoe UI',Roboto,sans-serif",
+        color: ()=> COLORS[Math.floor(Math.random()*COLORS.length)],
+        backgroundColor: "#0B2545",
+        rotateRatio: 0.15,
+        rotationSteps: 2,
+        shuffle: false,
+        drawOutOfBound: false,
+        shrinkToFit: true
+      });
+    }catch(e){ console.warn("WordCloud:",e); }
+  }
+
+  // Gráfico de top palabras
+  const top = Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,20);
+  const labels = top.map(x=>x[0]).reverse();
+  const vals   = top.map(x=>x[1]).reverse();
+  renderChart("c-palabras",{
+    type:"bar",
+    data:{labels, datasets:[{data:vals, backgroundColor:vals.map((_,i)=>mixColor("#48CAE4","#0B2545", i/(vals.length-1||1))), borderRadius:5}]},
+    options:{
+      indexAxis:"y", responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{beginAtZero:true, grid:{color:"rgba(11,37,69,.06)"}}, y:{grid:{display:false}}}
+    }
+  });
+
+  // Tabla de comentarios
+  const tb = document.querySelector("#t-comentarios tbody");
+  tb.innerHTML = COMENTARIOS.map(([a,b],i)=>
+    `<tr><td>${i+1}</td><td>${escapeHTML(a||"—")}</td><td>${escapeHTML(b||"—")}</td></tr>`
+  ).join("");
+}
+
+function escapeHTML(s){
+  return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+/* =====================================================================
+   8. TABLA DE DATOS
+   ===================================================================== */
+function renderTablaDatos(f){
+  const thead = document.querySelector("#t-datos thead");
+  const tbody = document.querySelector("#t-datos tbody");
+  thead.innerHTML = "<tr><th>ID</th><th>Edad</th><th>Género</th><th>Zona</th><th>P1</th><th>P2</th><th>P3</th><th>P4</th><th>P5</th></tr>";
+  tbody.innerHTML = f.map(d=>`
+    <tr>
+      <td>${d.id}</td>
+      <td>${d.edad??"—"}</td>
+      <td>${d.genero}</td>
+      <td>${escapeHTML(d.zona)}</td>
+      <td>${d.p1??"—"}</td>
+      <td>${d.p2.join(", ")||"—"}</td>
+      <td>${d.p3.join(", ")||"—"}</td>
+      <td>${d.p4??"—"}</td>
+      <td>${d.p5.join(", ")||"—"}</td>
+    </tr>`).join("");
+
+  // CSV descargable
+  const header = ["ID","Edad","Genero","Zona","P1","P2","P3","P4","P5"];
+  const rows = f.map(d=>[d.id,d.edad??"",d.genero,`"${d.zona}"`,d.p1??"",`"${d.p2.join("|")}"`,`"${d.p3.join("|")}"`,d.p4??"",`"${d.p5.join("|")}"`].join(","));
+  const csv = "\uFEFF"+[header.join(","), ...rows].join("\n");
+  document.getElementById("btn-csv").href = "data:text/csv;charset=utf-8,"+encodeURIComponent(csv);
+}
+
+/* =====================================================================
+   9. INICIALIZACIÓN
+   ===================================================================== */
+function llenarFiltros(){
+  const generos = [...new Set(DATA.map(d=>d.genero))].filter(x=>x && x!=="No espec.").sort();
+  const zonas   = [...new Set(DATA.map(d=>d.zona))].filter(x=>x && x!=="No espec.").sort();
+  const rangos  = ["<18","18-25","26-35","36-45","46-60","60+"];
+
+  const selG = document.getElementById("f-genero");
+  generos.forEach(g=>selG.add(new Option(g,g)));
+
+  const selZ = document.getElementById("f-zona");
+  zonas.forEach(z=>selZ.add(new Option(z,z)));
+
+  const selE = document.getElementById("f-edad");
+  rangos.forEach(r=>selE.add(new Option(r,r)));
+
+  selG.addEventListener("change", e=>{ state.genero=e.target.value; renderTodo(); });
+  selZ.addEventListener("change", e=>{ state.zona=e.target.value;   renderTodo(); });
+  selE.addEventListener("change", e=>{ state.rango=e.target.value;  renderTodo(); });
+}
+
+function activarTabs(){
+  document.querySelectorAll(".tab").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      document.querySelectorAll(".tab").forEach(b=>b.classList.remove("active"));
+      document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById("p-"+btn.dataset.tab).classList.add("active");
+      // Redibujar nube al cambiar a su tab
+      if(btn.dataset.tab==="nube") setTimeout(renderNube, 50);
+    });
+  });
+}
+
+function inicializar(){
+  document.getElementById("n-total").textContent = DATA.length;
+  llenarFiltros();
+  activarTabs();
+  renderTodo();
+
+  document.getElementById("wc-fuente").addEventListener("change", renderNube);
+  document.getElementById("wc-max").addEventListener("input", renderNube);
+
+  // Redibujar nube con la ventana
+  window.addEventListener("resize", ()=>{
+    const activo = document.querySelector(".tab.active").dataset.tab;
+    if(activo==="nube") renderNube();
+  });
+}
+
+document.addEventListener("DOMContentLoaded", inicializar);
+</script>
+</body>
+</html>
